@@ -18,26 +18,8 @@
 
 --_______________________________.
 --[[ CHANGELOG
-	*++Added "Raid Council Members"++
-	*Used to add council members from your current raid, but it's primary function is to add players from other realms properly.
-	*Added minimize feature to the RCLootCouncil window
-	
+		
 	Bugfixes:
-	*//Initialize now accounts for server delay, thanks guinea pig oblitlol.//
-	*//Removed debug spam on whisper stuff (I wonder how long that's been there?)//
-	*//Crossrealm >should< now be fully supported.//
-	*Note: This update requires everyone to reset their council (notice message included in-game).
-	*//The voting frame now properly sorts all sessions in accordance to responses.//
-	*//All localizable fonts are now inherited from GameFont to ensure different locale support.//
-		
-		
-		Found out a edited UnitIsUnit() can solve problems no matter what Blizz funcs handles us.
-		Everything should be perfectly cross realm functional now, but I still haven't tested real raid/cross realm.
-		
-		Untested functions:
-			GetMasterLootCandidate()
-			GetRaidRosterInfo()
-			GetGuildRosterInfo()
 		
 		
 ]]
@@ -236,7 +218,7 @@ function RCLootCouncil:OnEnable()
 	if IsInGuild() then
 		self:SendCommMessage("RCLootCouncil", "verTest "..version, "GUILD") -- send out a version check
 	end
-	if self.db.global.version <= "1.6.6" then -- Their council needs to be updated due to naming changes in 1.6.7
+	if self.db.global.version and self.db.global.version <= "1.6.7" then -- Their council needs to be updated due to naming changes in 1.6.7
 		if db.council and #db.council >= 1 then
 			db.council = {}
 			self:Print("With v1.6.7 you need to redo your council due to naming changes. Your current council has been wiped.")
