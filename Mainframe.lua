@@ -18,8 +18,13 @@
 
 --_______________________________.
 --[[ CHANGELOG
-	
 		
+	Bugfixes:
+	*//ML should now properly send out councilmember names.//
+	*//Fixed error related to GetRaidRosterInfo() could return nil presumeably due to latency issues.//
+	*//The "Filter Passes" message when everyone have passed didn't show.//
+	*//Solo tests now better reflects the real thing.//
+	*//MasterLooter string in voting frame was also displaying realmname.//
 		
 ]]
 
@@ -218,7 +223,7 @@ function RCLootCouncil:OnEnable()
 		self:SendCommMessage("RCLootCouncil", "verTest "..version, "GUILD") -- send out a version check
 	end
 	self:Print("RCLootCouncil v1.7-alpha. To avoid giving people the impression this is the newest working version they'll see you as having v1.6.5. Note that this version is NOT compatible with anything but 1.7-alpha, and should only be used with others having 1.7-alpha.")
-	if self.db.global.version <= "1.6.6" then -- Their council needs to be updated due to naming changes in 1.6.7
+	if self.db.global.version and self.db.global.version <= "1.6.7" then -- Their council needs to be updated due to naming changes in 1.6.7
 		if db.council and #db.council >= 1 then
 			db.council = {}
 			self:Print("With v1.7-alpha you need to redo your council due to naming changes. Your current council has been wiped.")
@@ -969,7 +974,8 @@ function RCLootCouncil:ChatCommand(msg)
 		else
 			if arg then 
 				self:Print("You can only raid test when in a raid and are the group leader/assistant.")
-				self:Print("Use \"/rc test\" for solo test.")
+				self:Print("Starting solo test.")
+				return
 			end
 			RCLootCouncil_Mainframe.testFrames()
 		end
@@ -1071,7 +1077,7 @@ function RCLootCouncil_initiateLoot(item)
 			itemRunning = item;			
 			-- create the table of in-raid-councilmembers to send to the councillors
 			for _, v in ipairs(db.council) do
-				if UnitInRaid(v) then
+				if UnitInRaid(Ambiguate(v, "short")) then
 					tinsert(currentCouncil, v)
 				end
 			end
@@ -1156,7 +1162,6 @@ function RCLootCouncil_Mainframe.prepareLootFrame(item)
 		end
 
 		PeopleToRollLabel:SetText(GetNumGroupMembers()) -- set the amount of people missing the rolling
-		--MasterlooterLabel:SetText(masterLooter);
 		
 		-- Award string
 		AwardString:Hide()
@@ -1994,11 +1999,11 @@ function RCLootCouncil_Mainframe.Update(update)
 	offset = FauxScrollFrame_GetOffset(ContentFrame)
 
 	-- People still to roll string
-	if #entryTable[currentSession] == GetNumGroupMembers() or (GetNumGroupMembers() == 0 and #entryTable[currentSession] == 1) then -- if everybody has rolled or we're alone
+	if update and ( GetNumGroupMembers() == 0 and #entryTable[currentSession] == 1 and isTesting) or ( GetNumGroupMembers() ~= 0 and #entryTable[currentSession] == GetNumGroupMembers() ) then -- if everybody has rolled or we're alone
 		PeopleToRollLabel:SetTextColor(0,1,0,1) -- make the text green
-		if isMasterLooter and #votersNames == #currentCouncil then
+		if (isMasterLooter or isTesting) and #votersNames == #currentCouncil then
 			PeopleToRollLabel:SetText("Everyone have rolled and voted!")	
-		elseif isMasterLooter then
+		elseif isMasterLooter or isTesting then
 			PeopleToRollLabel:SetText("Everyone have rolled - "..#votersNames.." of "..#currentCouncil.." have voted!")
 			PeopleToRollLabel:SetTextColor(1,1,0,1) -- make the text yellow
 		else
@@ -2007,12 +2012,12 @@ function RCLootCouncil_Mainframe.Update(update)
 		
 		local passes = 0
 		for j = 1, #entryTable[currentSession] do
-			if entryTable[currentSession][j][5] == db.passButton then
+			if entryTable[currentSession][j][5] == mlDB.passButton then
 				passes = passes + 1;
 			end
 		end
 
-		if db.filterPasses and isMasterLooter and passes == GetNumGroupMembers() or ((GetNumGroupMembers() == 0 and #entryTable[currentSession] == 1 and passes == 1 and isTesting)) then						
+		if db.filterPasses and (( GetNumGroupMembers() == 0 and passes == 1 and isTesting ) or ( passes == GetNumGroupMembers() and isMasterLooter )) then						
 			self:Print("Everyone passed! Turn \"Filter Passes\" off in order to distribute the loot.")
 		end
 
@@ -2021,13 +2026,15 @@ function RCLootCouncil_Mainframe.Update(update)
 			PeopleToRollLabel:SetTextColor(0.75, 0.75,0.75,1) -- make the text gray
 		end		
 
-	else -- if someone haven't rolled
+	elseif update then -- if someone haven't rolled
 		PeopleToRollLabel:SetTextColor(1,1,1,1) -- make the text white
 		if isMasterLooter and #votersNames == #currentCouncil then
 			PeopleToRollLabel:SetText(""..GetNumGroupMembers() - #entryTable[currentSession].." - everyone have voted!")
 			PeopleToRollLabel:SetTextColor(1,0,0,1) -- make the text red
 		elseif isMasterLooter and #votersNames > 0 then
 			PeopleToRollLabel:SetText(""..GetNumGroupMembers() - #entryTable[currentSession].." - "..#votersNames.." of "..#currentCouncil.." have voted!")
+		elseif isTesting and GetNumGroupMembers() == 0 then 
+			PeopleToRollLabel:SetText("1")
 		else
 			PeopleToRollLabel:SetText(GetNumGroupMembers() - #entryTable[currentSession])					
 		end
@@ -2099,7 +2106,7 @@ function RCLootCouncil_Mainframe.testFrames()
 			masterLooter = playerFullName
 			isTesting = true
 			mlDB = db.dbToSend
-			RCLootCouncil:announceConsideration()
+			--RCLootCouncil:announceConsideration()
 			RCLootCouncil_LootFrame:Update(lootTable)	
 			RCLootCouncil_Mainframe.prepareLootFrame(itemLink)
 			lootFramesCreated = true
@@ -2854,7 +2861,9 @@ function RCLootCouncil:GetPlayerFullName()
 end
 
 -- Blizz UnitIsUnit() doesn't know how to compare unit-realm with unit
+-- Seems unit-realm just isn't a valid "unitid"
 function RCLootCouncil:UnitIsUnit(unit1, unit2)
+	if not unit1 or not unit2 then return nil; end
 	-- Remove realm names, if any
 	if strfind(unit1, "-", nil, true) ~= nil then
 		unit1 = Ambiguate(unit1, "short")
