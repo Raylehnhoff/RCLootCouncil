@@ -18,26 +18,7 @@
 
 --_______________________________.
 --[[ CHANGELOG
-	*++Added "Raid Council Members"++
-	*Used to add council members from your current raid, but it's primary function is to add players from other realms properly.
-	*Added minimize feature to the RCLootCouncil window
 	
-	Bugfixes:
-	*//Initialize now accounts for server delay, thanks guinea pig oblitlol.//
-	*//Removed debug spam on whisper stuff (I wonder how long that's been there?)//
-	*//Crossrealm >should< now be fully supported.//
-	*Note: This update requires everyone to reset their council (notice message included in-game).
-	*//The voting frame now properly sorts all sessions in accordance to responses.//
-	*//All localizable fonts are now inherited from GameFont to ensure different locale support.//
-		
-		
-		Found out a edited UnitIsUnit() can solve problems no matter what Blizz funcs handles us.
-		Everything should be perfectly cross realm functional now, but I still haven't tested real raid/cross realm.
-		
-		Untested functions:
-			GetMasterLootCandidate()
-			GetRaidRosterInfo()
-			GetGuildRosterInfo()
 		
 		
 ]]
@@ -54,7 +35,7 @@ RCLootCouncil_RankFrame = {}
 local debug = false -- enable printing of debugging messages
 local nnp = false
 local superDebug = false -- extra debugging (very spammy)
-local version = GetAddOnMetadata("RCLootCouncil", "Version")
+local version = "1.6.5"
 
 local playerName, playerFullName
 local isMasterLooter = false; -- is the player master looter?
@@ -236,10 +217,11 @@ function RCLootCouncil:OnEnable()
 	if IsInGuild() then
 		self:SendCommMessage("RCLootCouncil", "verTest "..version, "GUILD") -- send out a version check
 	end
+	self:Print("RCLootCouncil v1.7-alpha. To avoid giving people the impression this is the newest working version they'll see you as having v1.6.5. Note that this version is NOT compatible with anything but 1.7-alpha, and should only be used with others having 1.7-alpha.")
 	if self.db.global.version <= "1.6.6" then -- Their council needs to be updated due to naming changes in 1.6.7
 		if db.council and #db.council >= 1 then
 			db.council = {}
-			self:Print("With v1.6.7 you need to redo your council due to naming changes. Your current council has been wiped.")
+			self:Print("With v1.7-alpha you need to redo your council due to naming changes. Your current council has been wiped.")
 		end
 	end
 	self.db.global.version = version;
